@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Research Study</title>
+    <script src="jspsych.js"></script>
+    <script src="plugin-html-button-response.js"></script>
+    <script src="plugin-survey-text.js"></script>
+    <script src="plugin-survey-multi-choice.js"></script>
+    <script src="plugin-survey-likert.js"></script>
+    <script src="plugin-call-function.js"></script>
+    <link href="jspsych.css" rel="stylesheet" type="text/css" />
+    <style>
+        .jspsych-content { max-width: 800px; }
+        .jspsych-survey-text-question textarea { width: 100%; min-height: 100px; }
+        .job-listing {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 15px 0;
+            background: #f9f9f9;
+            text-align: left;
+            border-radius: 5px;
+        }
+        .job-listing h4 { margin-top: 0; color: #333; }
+        .criteria-reminder {
+            background: #e8f4f8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .likert-row { margin: 10px 0; }
+        .scenario-text {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body></body>
+<script>
+
+// ============================================================================
+// CONFIGURATION - EDIT THESE VALUES
+// ============================================================================
+
+// DataPipe experiment ID - Get this from pipe.jspsych.org after setup
+const DATAPIPE_EXPERIMENT_ID = 'QJk2HFRSrKze';
+
+// Prolific completion URL - Get this from Prolific when creating study
+const PROLIFIC_COMPLETION_URL = 'https://app.prolific.com/submissions/complete?cc=CYJFHEGM';
+
+// ============================================================================
+// GET PROLIFIC PARAMETERS
+// ============================================================================
+
+const urlParams = new URLSearchParams(window.location.search);
+const PROLIFIC_PID = urlParams.get('PROLIFIC_PID') || 'unknown';
+const STUDY_ID = urlParams.get('STUDY_ID') || 'unknown';
+const SESSION_ID = urlParams.get('SESSION_ID') || 'unknown';
+
+// Generate unique filename for this participant
+const filename = `${PROLIFIC_PID}_${Date.now()}.csv`;
+
+// ============================================================================
+// INITIALIZE JSPSYCH
+// ============================================================================
+
+const jsPsych = initJsPsych({
+    show_progress_bar: true,
+    on_finish: function() {
+        // Redirect to Prolific after data is saved
+        window.location.href = PROLIFIC_COMPLETION_URL;
+    }
+});
+
+// Randomize prime condition
+const primeCondition = Math.random() < 0.5 ? 'negative' : 'positive';
+
+const timeline = [];
+
+// ============================================================================
+// BLOCK 1: CONSENT
+// ============================================================================
+
+const consent_intro = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <h2>Welcome to Our Research Study</h2>
+        <p><strong>Study Title:</strong> How Life Experiences Affect Mental Processes and Decision-Making</p>
+        <p><strong>Duration:</strong> Approximately 15-20 minutes</p>
+        <p><strong>Compensation:</strong> You will receive your standard Prolific payment upon completion.</p>
+        <hr>
+        <p><strong>Purpose:</strong> We are researchers studying how people's life experiences influence the way they think about the future and make decisions.</p>
+        <p><strong>What You'll Do:</strong></p>
+        <ul style="text-align: left; display: inline-block;">
+            <li>Answer questions about experiences you may have had</li>
+            <li>Complete some imagination exercises</li>
+            <li>Complete a brief task</li>
+            <li>Answer demographic questions</li>
+        </ul>
+        <p><strong>Risks:</strong> Some questions will ask about difficult life experiences. You may skip any question that makes you uncomfortable. Resources will be provided at the end.</p>
+        <p><strong>Confidentiality:</strong> Your responses are anonymous and stored securely.</p>
+        <p><strong>Voluntary Participation:</strong> Your participation is completely voluntary. You may withdraw at any time.</p>
+    `,
+    choices: ['Continue']
+};
+
+const consent_question = {
+    type: jsPsychSurveyMultiChoice,
+    questions: [
+        {
+            prompt: "Do you consent to participate in this study?",
+            name: 'consent',
+            options: ['Yes, I consent to participate', 'No, I do not wish to participate'],
+            required: true
+        }
+    ],
+    on_finish: function(data) {
+        if (data.response.consent === 'No, I do not wish to participate') {
+            jsPsych.endExperiment('Thank you for your time. You may close this window.');
+        }
+    }
+};
+
+const attention_check = {
+    type: jsPsychSurveyMultiChoice,
+    questions: [
+        {
+            prompt: "To ensure you are paying attention, please select 'Strongly Agree' below.",
+            name: 'attention_check',
+            options: ['Strongly Disagree', 'Disagree', 'Neither Agree nor Disagree', 'Agree', 'Strongly Agree'],
+            required: true
+        }
+    ]
+};
+
+timeline.push(consent_intro, consent_question, attention_check);
+
+// ============================================================================
+// BLOCK 2: TRAUMA INVENTORY (BTQ)
+// ============================================================================
+
+const btq_items = [
+    "Were you ever in a serious car accident, or a serious accident at work or somewhere else?",
+    "Were you ever in a major natural disaster (flood, hurricane, earthquake, etc.)?",
+    "Did you ever have a life-threatening illness such as cancer, heart attack, or stroke?",
+    "Before age 18, were you ever physically punished or beaten by a parent or caregiver so that you were very frightened, injured, or thought you would be injured?",
+    "Before age 18, did anyone ever touch sexual parts of your body or make you touch theirs?",
+    "Were you ever attacked, beaten, or mugged by anyone?",
+    "Were you ever forced or made to have sex when you didn't want to?",
+    "Were you ever in any other situation where you were seriously injured or your life was in danger?",
+    "Were you ever in any other situation where you saw someone seriously injured or killed, or found a dead body?",
+    "Did a close family member or friend die violently (e.g., by accident, suicide, murder)?"
+];
+
+const btq_labels = [
+    "Serious accident",
+    "Natural disaster",
+    "Life-threatening illness",
+    "Childhood physical abuse",
+    "Childhood sexual abuse",
+    "Physical attack/assault",
+    "Sexual assault",
+    "Life-threatening situation",
+    "Witnessed serious injury/death",
+    "Violent death of family member/friend"
+];
+
+const trauma_inventory = {
+    type: jsPsychSurveyMultiChoice,
+    preamble: `<h3>Life Events</h3>
+        <p>Listed below are events that sometimes happen to people. Please indicate whether each event happened to you at some point in your life.</p>`,
+    questions: btq_items.map((item, i) => ({
+        prompt: item,
+        name: `btq_${i+1}`,
+        options: ['Yes', 'No'],
+        required: true,
+        horizontal: true
+    }))
+};
+
+const most_bothersome = {
+    type: jsPsychSurveyMultiChoice,
+    questions: [
+        {
+            prompt: "Of the events you indicated 'Yes' to, which one currently bothers you the most?<br><em>If none bother you, or if you answered 'No' to all, select 'None / Not applicable'.</em>",
+            name: 'most_bothersome',
+            options: [...btq_labels, 'None / Not applicable'],
+            required: true
+        }
+    ]
+};
+
+timeline.push(trauma_inventory, most_bothersome);
+
+// ============================================================================
+// BLOCK 3: PRIME (Randomized)
+// ============================================================================
+
+// Negative Prime
+const negative_prime_text = {
+    type: jsPsychSurveyText,
+    preamble: `
+        <h3>Memory Recall</h3>
+        <p>Please take a moment to think about an experience from your past that made you feel <strong>fearful or anxious</strong>.</p>
+        <p>This could be anything&mdash;getting sick, experiencing conflict, losing someone close to you, losing a job, or any other difficult situation.</p>
+        <p>Please try to remember this event as vividly as you can. Picture where you were, what was happening, and how you felt at the time.</p>
+        <p>When you're ready, please briefly describe this experience in a few sentences below.</p>
+    `,
+    questions: [
+        {
+            prompt: '',
+            name: 'prime_text',
+            rows: 5,
+            required: true
+        }
+    ]
+};
+
+const negative_prime_ratings = {
+    type: jsPsychSurveyLikert,
+    questions: [
+        {
+            prompt: "How distressing does thinking about this event feel right now?",
+            name: 'prime_distress',
+            labels: ['1 - Not at all distressing', '2', '3 - Moderately', '4', '5 - Extremely distressing'],
+            required: true
+        },
+        {
+            prompt: "How vividly can you picture this event in your mind?",
+            name: 'prime_vividness',
+            labels: ['1 - Not at all vivid', '2', '3 - Moderately', '4', '5 - Extremely vivid'],
+            required: true
+        }
+    ]
+};
+
+// Positive Prime
+const positive_prime_text = {
+    type: jsPsychSurveyText,
+    preamble: `
+        <h3>Memory Recall</h3>
+        <p>Please take a moment to think about an experience from your past that made you feel <strong>happy or joyful</strong>.</p>
+        <p>This could be anything&mdash;the birth of a child, a wedding, an achievement at work or school, time spent with loved ones, or any other positive experience.</p>
+        <p>Please try to remember this event as vividly as you can. Picture where you were, what was happening, and how you felt at the time.</p>
+        <p>When you're ready, please briefly describe this experience in a few sentences below.</p>
+    `,
+    questions: [
+        {
+            prompt: '',
+            name: 'prime_text',
+            rows: 5,
+            required: true
+        }
+    ]
+};
+
+const positive_prime_ratings = {
+    type: jsPsychSurveyLikert,
+    questions: [
+        {
+            prompt: "How happy does thinking about this event make you feel right now?",
+            name: 'prime_happy',
+            labels: ['1 - Not at all happy', '2', '3 - Moderately', '4', '5 - Extremely happy'],
+            required: true
+        },
+        {
+            prompt: "How vividly can you picture this event in your mind?",
+            name: 'prime_vividness',
+            labels: ['1 - Not at all vivid', '2', '3 - Moderately', '4', '5 - Extremely vivid'],
+            required: true
+        }
+    ]
+};
+
+// Conditional prime based on random assignment
+const prime_block = {
+    timeline: primeCondition === 'negative'
+        ? [negative_prime_text, negative_prime_ratings]
+        : [positive_prime_text, positive_prime_ratings]
+};
+
+// Record condition
+const record_condition = {
+    type: jsPsychCallFunction,
+    func: function() {
+        jsPsych.data.addProperties({
+            prime_condition: primeCondition,
+            prolific_pid: PROLIFIC_PID,
+            study_id: STUDY_ID,
+            session_id: SESSION_ID
+        });
+    }
+};
+
+timeline.push(record_condition, prime_block);
+
+// ============================================================================
+// BLOCK 4: PROSPECTIVE IMAGERY TASK (PIT)
+// ============================================================================
+
+const pit_instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <h3>Imagination Exercise</h3>
+        <p>Now we'd like you to imagine some situations that might happen in the future.</p>
+        <p>For each scenario, please try to picture it happening to you as vividly as you can. Imagine the details&mdash;where you are, who is with you, what you see and hear, and how you feel.</p>
+        <p>After imagining each scenario, you'll briefly describe what you imagined and answer a few questions about your mental image.</p>
+        <p><strong>Please take your time with each scenario.</strong></p>
+    `,
+    choices: ['Continue']
+};
+
+const pit_scenarios = [
+    {
+        id: 'job',
+        valence: 'positive',
+        prompt: "Imagine that you are <strong>offered a job or opportunity that you've been hoping for</strong>.",
+        detail: "Picture yourself in this moment&mdash;receiving the news, where you are, who is with you, and how you feel."
+    },
+    {
+        id: 'social',
+        valence: 'positive',
+        prompt: "Imagine <strong>sharing a special moment with a family member or close friend</strong>&mdash;perhaps a celebration, a meaningful conversation, or simply enjoying time together.",
+        detail: "Picture where you are, what you're doing, and how you feel."
+    },
+    {
+        id: 'setback',
+        valence: 'negative',
+        prompt: "Imagine that you experience a <strong>significant disappointment or setback</strong>&mdash;perhaps not getting something you worked hard for, receiving bad news, or facing an unexpected difficulty.",
+        detail: "Picture yourself in this moment."
+    },
+    {
+        id: 'financial',
+        valence: 'negative',
+        prompt: "Imagine that you face an <strong>unexpected financial problem</strong>&mdash;perhaps an unexpected expense, job loss, or money running out.",
+        detail: "Picture yourself dealing with this situation."
+    }
+];
+
+timeline.push(pit_instructions);
+
+pit_scenarios.forEach((scenario, index) => {
+    const pit_text = {
+        type: jsPsychSurveyText,
+        preamble: `
+            <div class="scenario-text">
+                <p><strong>Scenario ${index + 1}</strong></p>
+                <p>${scenario.prompt}</p>
+                <p>${scenario.detail}</p>
+                <p>Take a moment to imagine this as vividly as you can, then describe what you imagine below.</p>
+            </div>
+        `,
+        questions: [
+            {
+                prompt: '',
+                name: `pit_${scenario.id}_text`,
+                rows: 4,
+                required: true
+            }
+        ]
+    };
+
+    const pit_ratings = {
+        type: jsPsychSurveyLikert,
+        preamble: `<p>Please rate your mental image for the scenario you just imagined:</p>`,
+        questions: [
+            {
+                prompt: "How vivid is the mental image you formed?",
+                name: `pit_${scenario.id}_vividness`,
+                labels: ['1 - Not at all', '2', '3 - Moderately', '4', '5 - Extremely'],
+                required: true
+            },
+            {
+                prompt: "How strong are the emotions you feel when imagining this?",
+                name: `pit_${scenario.id}_emotion`,
+                labels: ['1 - Not at all', '2', '3 - Moderately', '4', '5 - Extremely'],
+                required: true
+            },
+            {
+                prompt: "How likely do you think this scenario is to actually happen to you?",
+                name: `pit_${scenario.id}_likelihood`,
+                labels: ['1 - Very unlikely', '2', '3 - Moderately', '4', '5 - Very likely'],
+                required: true
+            }
+        ],
+        data: {
+            pit_scenario: scenario.id,
+            pit_valence: scenario.valence
+        }
+    };
+
+    timeline.push(pit_text, pit_ratings);
+});
+
+// ============================================================================
+// BLOCK 5: REAL EFFORT TASK
+// ============================================================================
+
+const effort_instructions = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <h3>Job Listing Review Task</h3>
+        <p>In this task, you'll review job listings and identify ones that meet specific criteria.</p>
+        <div class="criteria-reminder">
+            <p><strong>Your goal:</strong> For each job listing, indicate whether it meets <strong>ALL</strong> of the following criteria:</p>
+            <ul style="text-align: left; display: inline-block;">
+                <li>Full-time position (35+ hours/week)</li>
+                <li>Salary at least $40,000/year</li>
+                <li>No graduate degree required</li>
+            </ul>
+        </div>
+        <p>You'll review <strong>9 job listings</strong>. Please work carefully.</p>
+        <p><strong>Bonus:</strong> You will earn a bonus of <strong>$0.05 for each correctly classified listing</strong> (maximum bonus: $0.45).</p>
+    `,
+    choices: ['Begin Task']
+};
+
+// Job listings: title, company, hours, salary, requirements, correct (1=yes, 0=no)
+const job_listings = [
+    {title: "Administrative Assistant", company: "Greenfield Solutions", hours: "40 hours/week (Full-time)", salary: "$42,000 - $48,000/year", reqs: "High school diploma or equivalent; 2+ years experience preferred", correct: 1},
+    {title: "Research Analyst", company: "DataCore Analytics", hours: "40 hours/week (Full-time)", salary: "$55,000 - $65,000/year", reqs: "Master's degree in Statistics, Economics, or related field required", correct: 0},
+    {title: "Customer Service Representative", company: "TechSupport Plus", hours: "25 hours/week (Part-time)", salary: "$35,000/year (pro-rated)", reqs: "High school diploma; customer service experience a plus", correct: 0},
+    {title: "Warehouse Associate", company: "FastShip Logistics", hours: "40 hours/week (Full-time)", salary: "$38,000 - $42,000/year", reqs: "Ability to lift 50 lbs; no degree required", correct: 0},
+    {title: "Office Manager", company: "Citywide Insurance", hours: "40 hours/week (Full-time)", salary: "$52,000 - $58,000/year", reqs: "Bachelor's degree preferred but not required; 3+ years office experience", correct: 1},
+    {title: "Dental Hygienist", company: "Bright Smile Dental", hours: "36 hours/week (Full-time)", salary: "$72,000 - $80,000/year", reqs: "Associate's degree in Dental Hygiene; state license required", correct: 1},
+    {title: "Delivery Driver", company: "QuickDeliver Co.", hours: "45 hours/week (Full-time)", salary: "$44,000 - $50,000/year", reqs: "Valid driver's license; clean driving record; no degree required", correct: 1},
+    {title: "Medical Assistant", company: "Community Health Clinic", hours: "40 hours/week (Full-time)", salary: "$41,000 - $46,000/year", reqs: "Medical Assistant certification; associate's degree or equivalent training", correct: 1},
+    {title: "Sales Associate", company: "RetailMax Stores", hours: "38 hours/week (Full-time)", salary: "$36,000 + commission", reqs: "High school diploma; retail experience preferred", correct: 0}
+];
+
+timeline.push(effort_instructions);
+
+job_listings.forEach((job, index) => {
+    const job_trial = {
+        type: jsPsychSurveyMultiChoice,
+        preamble: `
+            <div class="criteria-reminder">
+                <strong>Criteria:</strong> Full-time (35+ hrs) • Salary $40k+ • No graduate degree required
+            </div>
+            <div class="job-listing">
+                <h4>${job.title}</h4>
+                <p><strong>Company:</strong> ${job.company}</p>
+                <p><strong>Hours:</strong> ${job.hours}</p>
+                <p><strong>Salary:</strong> ${job.salary}</p>
+                <p><strong>Requirements:</strong> ${job.reqs}</p>
+            </div>
+        `,
+        questions: [
+            {
+                prompt: "Does this listing meet ALL criteria?",
+                name: `job_${index + 1}`,
+                options: ['Yes - Meets all criteria', 'No - Does not meet all criteria'],
+                required: true
+            }
+        ],
+        data: {
+            job_number: index + 1,
+            job_title: job.title,
+            correct_answer: job.correct
+        },
+        on_finish: function(data) {
+            const response = data.response[`job_${index + 1}`];
+            const correct = (response === 'Yes - Meets all criteria' && job.correct === 1) ||
+                           (response === 'No - Does not meet all criteria' && job.correct === 0);
+            data.correct = correct ? 1 : 0;
+        }
+    };
+    timeline.push(job_trial);
+});
+
+// ============================================================================
+// BLOCK 6: DEMOGRAPHICS
+// ============================================================================
+
+const demographics = {
+    type: jsPsychSurveyMultiChoice,
+    preamble: '<h3>Demographics</h3><p>Please answer the following questions about yourself.</p>',
+    questions: [
+        {
+            prompt: "What is your gender?",
+            name: 'gender',
+            options: ['Male', 'Female', 'Non-binary / Third gender', 'Prefer to self-describe', 'Prefer not to say'],
+            required: true
+        },
+        {
+            prompt: "What is the highest level of education you have completed?",
+            name: 'education',
+            options: ['Less than high school', 'High school diploma or GED', 'Some college, no degree', "Associate's degree", "Bachelor's degree", "Master's degree", 'Doctoral or professional degree'],
+            required: true
+        },
+        {
+            prompt: "What is your current employment status?",
+            name: 'employment',
+            options: ['Employed full-time', 'Employed part-time', 'Self-employed', 'Unemployed, looking for work', 'Unemployed, not looking for work', 'Student', 'Retired', 'Unable to work'],
+            required: true
+        },
+        {
+            prompt: "What is your annual household income?",
+            name: 'income',
+            options: ['Less than $25,000', '$25,000 - $49,999', '$50,000 - $74,999', '$75,000 - $99,999', '$100,000 - $149,999', '$150,000 or more', 'Prefer not to say'],
+            required: true
+        }
+    ]
+};
+
+const age_question = {
+    type: jsPsychSurveyText,
+    questions: [
+        {
+            prompt: "What is your age?",
+            name: 'age',
+            required: true
+        }
+    ]
+};
+
+timeline.push(demographics, age_question);
+
+// ============================================================================
+// BLOCK 7: DEBRIEF & MENTAL HEALTH RESOURCES
+// ============================================================================
+
+const resources = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <h3>Thank You</h3>
+        <p>Thank you for completing this survey.</p>
+        <p>Some of the questions in this survey asked about difficult life experiences. <strong>If you are feeling distressed, please consider reaching out to one of these resources:</strong></p>
+        <ul style="text-align: left; display: inline-block;">
+            <li><strong>National Suicide Prevention Lifeline:</strong> Call or text 988</li>
+            <li><strong>Crisis Text Line:</strong> Text HOME to 741741</li>
+            <li><strong>SAMHSA National Helpline:</strong> 1-800-662-4357 (free, confidential, 24/7)</li>
+        </ul>
+        <p>These services are free, confidential, and available 24/7.</p>
+    `,
+    choices: ['Continue']
+};
+
+const debrief = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <h3>Study Information</h3>
+        <p>This study examines how past experiences, particularly stressful ones, influence the way people imagine future events and make decisions.</p>
+        <p>Research suggests that people who have experienced trauma may imagine future events differently than those who have not. By understanding these patterns, researchers hope to develop better interventions.</p>
+        <p>In this study, you were randomly assigned to recall either a negative (stressful) or positive (happy) memory. We are comparing how this affects people's imagination of future scenarios and their performance on tasks.</p>
+        <p><strong>Click below to save your data and complete the study.</strong></p>
+    `,
+    choices: ['Complete Study']
+};
+
+timeline.push(resources, debrief);
+
+// ============================================================================
+// SAVE DATA VIA DATAPIPE (using fetch)
+// ============================================================================
+
+const save_data = {
+    type: jsPsychCallFunction,
+    async: true,
+    func: async function(done) {
+        const data_csv = jsPsych.data.get().csv();
+
+        try {
+            const response = await fetch('https://pipe.jspsych.org/api/data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    experimentID: DATAPIPE_EXPERIMENT_ID,
+                    filename: filename,
+                    data: data_csv
+                })
+            });
+
+            if (response.ok) {
+                console.log('Data saved successfully');
+            } else {
+                console.error('Failed to save data:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error saving data:', error);
+        }
+
+        done();
+    }
+};
+
+timeline.push(save_data);
+
+// ============================================================================
+// RUN EXPERIMENT
+// ============================================================================
+
+jsPsych.run(timeline);
+
+</script>
+</html>
