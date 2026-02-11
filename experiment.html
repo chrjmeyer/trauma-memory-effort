@@ -472,29 +472,54 @@ job_listings.forEach((job, index) => {
 });
 
 // ============================================================================
+// BONUS CALCULATION & DISPLAY
+// ============================================================================
+
+const calculate_bonus = {
+    type: jsPsychCallFunction,
+    func: function() {
+        const job_trials = jsPsych.data.get().values().filter(t => t.job_number !== undefined);
+        const total_correct = job_trials.reduce((sum, t) => sum + (t.correct || 0), 0);
+        const bonus_amount = (total_correct * 0.05).toFixed(2);
+        jsPsych.data.addProperties({
+            total_correct: total_correct,
+            bonus_amount: bonus_amount
+        });
+    }
+};
+
+const show_bonus = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {
+        const job_trials = jsPsych.data.get().values().filter(t => t.job_number !== undefined);
+        const total_correct = job_trials.reduce((sum, t) => sum + (t.correct || 0), 0);
+        const bonus = (total_correct * 0.05).toFixed(2);
+        return `
+            <h3>Task Complete</h3>
+            <p>You correctly classified <strong>${total_correct} out of 9</strong> job listings.</p>
+            <p>Your bonus: <strong>$${bonus}</strong></p>
+            <p><em>This bonus will be added to your Prolific payment within a few days of study completion.</em></p>
+        `;
+    },
+    choices: ['Continue']
+};
+
+timeline.push(calculate_bonus, show_bonus);
+
+// ============================================================================
 // BLOCK 6: DEMOGRAPHICS
 // ============================================================================
 
+// Age, gender, and employment are sourced from Prolific's verified demographics.
+// Only education and income are collected here (not available in Prolific base export).
 const demographics = {
     type: jsPsychSurveyMultiChoice,
-    preamble: '<h3>Demographics</h3><p>Please answer the following questions about yourself.</p>',
+    preamble: '<h3>A couple more questions</h3>',
     questions: [
-        {
-            prompt: "What is your gender?",
-            name: 'gender',
-            options: ['Male', 'Female', 'Non-binary / Third gender', 'Prefer to self-describe', 'Prefer not to say'],
-            required: true
-        },
         {
             prompt: "What is the highest level of education you have completed?",
             name: 'education',
             options: ['Less than high school', 'High school diploma or GED', 'Some college, no degree', "Associate's degree", "Bachelor's degree", "Master's degree", 'Doctoral or professional degree'],
-            required: true
-        },
-        {
-            prompt: "What is your current employment status?",
-            name: 'employment',
-            options: ['Employed full-time', 'Employed part-time', 'Self-employed', 'Unemployed, looking for work', 'Unemployed, not looking for work', 'Student', 'Retired', 'Unable to work'],
             required: true
         },
         {
@@ -506,18 +531,7 @@ const demographics = {
     ]
 };
 
-const age_question = {
-    type: jsPsychSurveyText,
-    questions: [
-        {
-            prompt: "What is your age?",
-            name: 'age',
-            required: true
-        }
-    ]
-};
-
-timeline.push(demographics, age_question);
+timeline.push(demographics);
 
 // ============================================================================
 // BLOCK 7: DEBRIEF & MENTAL HEALTH RESOURCES
