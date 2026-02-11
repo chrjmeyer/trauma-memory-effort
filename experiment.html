@@ -193,7 +193,53 @@ const most_bothersome = {
     ]
 };
 
-timeline.push(trauma_inventory, most_bothersome);
+// PCL-5 Abbreviated (8 items, 2 per cluster)
+// Maps to Ethiopia baseline: repeat_memory, phy_react, avoid_feel, avoid_remind,
+//   neg_belief, neg_feel, aggressive_beh, sleep_trouble
+// Response scale: 0=Not at all, 1=A little bit, 2=Moderately, 3=Quite a bit, 4=Extremely
+const pcl5_items = [
+    // Cluster B: Intrusion
+    "Repeated, disturbing, and unwanted memories of the stressful experience?",
+    "Having strong physical reactions when something reminded you of the stressful experience (for example, heart pounding, trouble breathing, sweating)?",
+    // Cluster C: Avoidance
+    "Avoiding memories, thoughts, or feelings related to the stressful experience?",
+    "Avoiding external reminders of the stressful experience (for example, people, places, conversations, activities, objects, or situations)?",
+    // Cluster D: Negative cognitions and mood
+    "Having strong negative beliefs about yourself, other people, or the world (for example, having thoughts such as: I am bad, there is something seriously wrong with me, no one can be trusted, the world is completely dangerous)?",
+    "Having strong negative feelings such as fear, horror, anger, guilt, or shame?",
+    // Cluster E: Arousal
+    "Irritable behavior, angry outbursts, or acting aggressively?",
+    "Trouble falling or staying asleep?"
+];
+
+const pcl5_labels = [
+    'pcl_intrusion1', 'pcl_intrusion2',
+    'pcl_avoidance1', 'pcl_avoidance2',
+    'pcl_cognition1', 'pcl_cognition2',
+    'pcl_arousal1', 'pcl_arousal2'
+];
+
+const pcl5_scale = [
+    "Not at all",
+    "A little bit",
+    "Moderately",
+    "Quite a bit",
+    "Extremely"
+];
+
+const pcl5 = {
+    type: jsPsychSurveyLikert,
+    preamble: `<h3>Reactions to Stressful Experiences</h3>
+        <p>Keeping your most bothersome event in mind, please indicate how much you have been bothered by each of the following problems <strong>in the past month</strong>.</p>`,
+    questions: pcl5_items.map((item, i) => ({
+        prompt: item,
+        name: pcl5_labels[i],
+        labels: pcl5_scale,
+        required: true
+    }))
+};
+
+timeline.push(trauma_inventory, most_bothersome, pcl5);
 
 // ============================================================================
 // BLOCK 3: PRIME (Randomized)
